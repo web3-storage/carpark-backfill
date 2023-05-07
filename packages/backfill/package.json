@@ -1,0 +1,37 @@
+{
+  "name": "backfill",
+  "version": "1.0.0",
+  "description": "",
+  "type": "module",
+  "main": "index.js",
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.325.0",
+    "@ipld/car": "^5.1.1",
+    "cardex": "^1.0.1",
+    "debug": "^4.3.4",
+    "it-ndjson": "^1.0.2",
+    "it-pipe": "^3.0.1",
+    "multiformats": "^11.0.2",
+    "ndjson": "^2.0.0",
+    "prom-client": "^14.2.0",
+    "p-retry": "^5.1.2",
+    "streaming-iterables": "^7.1.0",
+    "uint8arrays": "^4.0.3"
+  },
+  "devDependencies": {
+    "@types/node": "18.16.3",
+    "@types/debug": "^4.1.7",
+    "dotenv": "^16.0.3",
+    "sade": "^1.8.1"
+  },
+  "scripts": {
+    "start": "NODE_TLS_REJECT_UNAUTHORIZED=0 DEBUG=backfill* node bin.js backfill",
+    "start-list": "NODE_TLS_REJECT_UNAUTHORIZED=0 DEBUG=backfill-list* node bin.js backfill-list",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "engines": {
+    "node": "16.x"
+  },
+  "author": "Vasco Santos <santos.vasco10@gmail.com>",
+  "license": "Apache-2.0 OR MIT"
+}
