@@ -1,9 +1,12 @@
-FROM node:16-alpine
-RUN mkdir -p /home/node/app/node_modules
-WORKDIR /home/node/app
-COPY package*.json ./
-RUN chown -R node:node /home/node/app
-USER node
+# Build the backfill worker
+FROM node:18.15.0-slim
+
+WORKDIR /usr/src/app
+COPY package*.json *.js ./
 RUN npm install
-COPY --chown=node:node . .
-CMD [ "npm", "start" ]
+
+COPY *.js *.json *.sh ./
+CMD [ "npm", "start", "--silent"]
+
+EXPOSE 9999
+HEALTHCHECK --interval=60s --timeout=1s --start-period=5s --retries=3 CMD [ "curl" "https://127.0.0.1:9999" "--fail" ]

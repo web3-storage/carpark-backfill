@@ -3,6 +3,7 @@ import {
   HeadObjectCommand,
   PutObjectCommand,
   ListObjectsV2Command,
+  GetObjectAttributesCommand,
   GetObjectCommand
 } from '@aws-sdk/client-s3'
 import pRetry from 'p-retry'
@@ -16,7 +17,7 @@ export function getBuckets (ctx) {
   return {
     originBucket: new BucketClient(ctx.originBucket),
     destinationBucket: new BucketClient(ctx.destinationBucket),
-    destinationSideIndexBucket: new BucketClient(ctx.destinationSideIndexBucket),
+    // destinationSideIndexBucket: new BucketClient(ctx.destinationSideIndexBucket),
     // destinationRootIndexBucket: new BucketClient(ctx.destinationRootIndexBucket),
   }
 }
@@ -54,7 +55,6 @@ export class BucketClient {
       try {
         await this.client.send(cmd)
       } catch (cause) {
-        // @ts-expect-error aws types
         if (cause?.$metadata?.httpStatusCode === 404) {
           return false
         }
@@ -103,7 +103,29 @@ export class BucketClient {
       return undefined
     }
 
-    return res.Body
+    return {
+      body: res.Body,
+      etag: res.ETag || '',
+      contentLength: res.ContentLength || 0
+    }
+  }
+
+  /**
+   * @param {string} key
+   */
+  async getAttributes (key) {
+    const getCmd = new GetObjectAttributesCommand({
+      Bucket: this.name,
+      Key: key,
+      ObjectAttributes: ['Checksum', 'ObjectSize', ]
+    })
+
+    const res = await pRetry(
+      () => this.client.send(getCmd),
+      { retries: 3 }
+    )
+
+    return res
   }
 
   /**
