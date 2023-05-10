@@ -2,6 +2,7 @@ dist
 .nyc_output
 tmp
 node_modules
+.sst
 
 coverage
 .pnpm-debug.log
