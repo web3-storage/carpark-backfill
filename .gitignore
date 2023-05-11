@@ -8,3 +8,7 @@ coverage
 .pnpm-debug.log
 .env
 .vscode
+
+
+nft_cids_uploads_blocked_users.json
+w3_cids_uploads_blocked_users.json

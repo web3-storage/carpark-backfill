@@ -43,3 +43,44 @@ export async function getSideIndex(stream) {
 
   return uint8arraysConcat(chunks)
 }
+
+/**
+ * Build the side index.
+ *
+ * @param {Uint8Array} bytes
+ * @returns
+ */
+export async function getSideIndexFromBytes(bytes) {
+  const { writer, out } = MultihashIndexSortedWriter.create()
+  /** @type {Error?} */
+  let failError
+
+  const fillWriterWithIndexBlocks = async () => {
+    try {
+      const indexer = await CarIndexer.fromBytes(bytes)
+      for await (const blockIndexData of indexer) {
+        // @ts-ignore CID versions incompatible
+        await writer.put(blockIndexData)
+      }
+    } catch (/** @type {any} */ error) {
+      failError = error
+    } finally {
+      await writer.close()
+    }
+  }
+
+  // call here, but don't await so it does this async
+  fillWriterWithIndexBlocks()
+
+  const chunks = []
+  for await (const chunk of out) {
+    chunks.push(chunk)
+  }
+
+  // @ts-ignore ts being ts
+  if (failError) {
+    throw failError
+  }
+
+  return uint8arraysConcat(chunks)
+}
