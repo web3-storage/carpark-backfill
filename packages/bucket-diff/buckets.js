@@ -7,19 +7,26 @@ import {
   GetObjectCommand
 } from '@aws-sdk/client-s3'
 import pRetry from 'p-retry'
-import pTimeout from 'p-timeout'
 import * as API from './types.js'
 
 /**
- * @param {API.BackfillBucketProps} ctx
- * @returns {API.BackfillBucketClients}
+ * @param {API.BucketDiffCreateListProps} ctx
+ * @returns {API.BucketCreateListClients}
  */
-export function getBuckets (ctx) {
+export function getCreateListBuckets (ctx) {
+  return {
+    originBucket: new BucketClient(ctx.originBucket)
+  }
+}
+
+/**
+ * @param {API.BucketDiffUpdateListProps} ctx
+ * @returns {API.BucketUpdateListClients}
+ */
+export function getUpdateListBuckets (ctx) {
   return {
     originBucket: new BucketClient(ctx.originBucket),
     destinationBucket: new BucketClient(ctx.destinationBucket),
-    destinationSideIndexBucket: new BucketClient(ctx.destinationSideIndexBucket),
-    destinationRootIndexBucket: new BucketClient(ctx.destinationRootIndexBucket),
   }
 }
 
@@ -59,14 +66,11 @@ export class BucketClient {
         if (cause?.$metadata?.httpStatusCode === 404) {
           return false
         }
-        // do not stop process
-        return false
-        // throw new Error(`Failed to check bucket ${this.name}`)
+        throw new Error(`Failed to check bucket ${this.name}`)
       }
       return true
     }, {
-      retries: 20,
-      minTimeout: 10000
+      retries: 3
     })
   }
 
@@ -85,10 +89,7 @@ export class BucketClient {
     })
     await pRetry(
       () => this.client.send(putCmd),
-      {
-        retries: 20,
-        minTimeout: 10000
-      }
+      { retries: 3 }
     )
   }
 
@@ -101,23 +102,12 @@ export class BucketClient {
       Key: key,
     })
 
-    let res
-    try {
-      res = await pRetry(
-        () => pTimeout(this.client.send(getCmd), {
-          milliseconds: 5000
-        }),
-        {
-          retries: 10,
-          minTimeout: 5000,
-          // onFailedAttempt: (error) => {
-          //   console.log(`get error ${key}`, error)
-          // }
-        }
-      )
-    } catch {}
+    const res = await pRetry(
+      () => this.client.send(getCmd),
+      { retries: 3 }
+    )
 
-    if (!res || !res.Body) {
+    if (!res.Body) {
       return undefined
     }
 
@@ -151,6 +141,7 @@ export class BucketClient {
    */
   async * list (options) {
     let continuationToken
+    let count = 0
     do {
       /** @type {import('@aws-sdk/client-s3').ListObjectsV2CommandOutput} */
       const response = await this.client.send(new ListObjectsV2Command({
@@ -160,10 +151,12 @@ export class BucketClient {
       }))
     
       continuationToken = response.NextContinuationToken
+      console.log(count, 'continuation token', continuationToken)
 
       if (response.Contents) {
         yield response.Contents
       }
+      count++
     } while (continuationToken)
   }
 }
