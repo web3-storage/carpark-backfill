@@ -5,7 +5,7 @@ export default {
   config(_input) {
     return {
       name: "carpark-backfill",
-      region: "us-east-2",
+      region: "us-west-2",
     };
   },
   stacks(app) {

@@ -87,7 +87,10 @@ export class BucketClient {
       () => this.client.send(putCmd),
       {
         retries: 20,
-        minTimeout: 10000
+        minTimeout: 10000,
+        onFailedAttempt: err => {
+          console.log('err', err)
+        }
       }
     )
   }

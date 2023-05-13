@@ -27,6 +27,8 @@ export function getUpdateListBuckets (ctx) {
   return {
     originBucket: new BucketClient(ctx.originBucket),
     destinationBucket: new BucketClient(ctx.destinationBucket),
+    destinationSideIndexBucket: new BucketClient(ctx.destinationSideIndexBucket),
+    destinationRootIndexBucket: new BucketClient(ctx.destinationRootIndexBucket),
   }
 }
 

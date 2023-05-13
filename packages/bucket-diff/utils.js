@@ -13,6 +13,20 @@ export function getUpdateListEnvContext () {
       accessKeyId: mustGetEnv('DESTINATION_BUCKET_ACCESS_KEY_ID'),
       secretAccessKey: mustGetEnv('DESTINATION_BUCKET_SECRET_ACCESS_KEY')
     },
+    destinationSideIndexBucket: {
+      region: mustGetEnv('DESTINATION_SIDE_INDEX_BUCKET_REGION'),
+      name: mustGetEnv('DESTINATION_SIDE_INDEX_BUCKET_NAME'),
+      endpoint: process.env['DESTINATION_SIDE_INDEX_BUCKET_ENDPOINT'],
+      accessKeyId: mustGetEnv('DESTINATION_SIDE_INDEX_BUCKET_ACCESS_KEY_ID'),
+      secretAccessKey: mustGetEnv('DESTINATION_SIDE_INDEX_BUCKET_SECRET_ACCESS_KEY')
+    },
+    destinationRootIndexBucket: {
+      region: mustGetEnv('DESTINATION_ROOT_INDEX_BUCKET_REGION'),
+      name: mustGetEnv('DESTINATION_ROOT_INDEX_BUCKET_NAME'),
+      endpoint: process.env['DESTINATION_ROOT_INDEX_BUCKET_ENDPOINT'],
+      accessKeyId: mustGetEnv('DESTINATION_ROOT_INDEX_BUCKET_ACCESS_KEY_ID'),
+      secretAccessKey: mustGetEnv('DESTINATION_ROOT_INDEX_BUCKET_SECRET_ACCESS_KEY')
+    },
   }
 }
 
