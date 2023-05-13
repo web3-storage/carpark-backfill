@@ -88,7 +88,10 @@ export class BucketClient {
       () => this.client.send(putCmd),
       {
         retries: 20,
-        minTimeout: 10000
+        minTimeout: 10000,
+        onFailedAttempt: err => {
+          console.log('err', err)
+        }
       }
     )
   }
@@ -108,7 +111,14 @@ export class BucketClient {
     //     //     }
     //   }
     // })
-
+    // const restoreCmd = new RestoreObjectCommand({
+    //   Bucket: this.name,
+    //   Key: key,
+    //   RestoreRequest: {
+    //     Days: 5,
+    //     Tier: 'Expedited'
+    //   }
+    // })
     // try {
     //   await this.client.send(restoreCmd)
     // } catch {}

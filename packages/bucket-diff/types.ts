@@ -8,16 +8,16 @@ import {
 
 export interface BucketDiffProps {
   originBucket: BucketProps
+  prefix?: string
   healthcheckPort: number
   dataUrl: string
+  web3StorageToken: string
 }
 
 export interface BucketDiffCreateListProps extends BucketDiffProps {
   readBatchSize: number
   writeBatchSize: number
   continuationToken?: string
-  prefix?: string
-  web3StorageToken: string
 }
 
 export interface BucketDiffUpdateListProps extends BucketDiffProps {
@@ -27,6 +27,12 @@ export interface BucketDiffUpdateListProps extends BucketDiffProps {
 export interface ListResult {
   inKey: string
   outKey: string
+  size: number
+}
+
+export interface ListEntry {
+  in: string
+  out: string
   size: number
 }
 

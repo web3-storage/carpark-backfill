@@ -4,7 +4,7 @@ import * as ec2 from "aws-cdk-lib/aws-ec2";
 import { Platform } from "aws-cdk-lib/aws-ecr-assets";
 import { Duration } from 'aws-cdk-lib';
 import { getCdkNames } from "./config.js";
-import { list } from "./list.js"
+import { list2 } from "./list.js"
 
 export function BackfillStack({ stack }: StackContext) {
   const clusterName = getCdkNames('job-cluster', stack.stage)
@@ -12,18 +12,14 @@ export function BackfillStack({ stack }: StackContext) {
     clusterName,
   })
 
-  // cluster.addCapacity('DefaultAutoScalingGroupCapacity', {
-  //   instanceType: new ec2.InstanceType("t2.xlarge"),
-  // })
-
   cluster.addCapacity('DefaultAutoScalingGroupCapacity', {
-    instanceType: new ec2.InstanceType("t3.xlarge"),
+    instanceType: new ec2.InstanceType("t3.2xlarge"),
     maxCapacity: 20,
-    desiredCapacity: 7
+    desiredCapacity: 5
   })
 
   const tasks: ecs.Ec2TaskDefinition[] = []
-  list.slice(0, 20)
+  list2.slice(0, 15)
     .map((dataUrl, index) => {
       const taskDefinitionJob = new ecs.Ec2TaskDefinition(stack, getCdkNames(`task-jobs-${index}`, stack.stage))
       tasks.push(taskDefinitionJob)
@@ -54,8 +50,8 @@ export function BackfillStack({ stack }: StackContext) {
           HEALTH_CHECK_PORT: mustGetEnv('HEALTH_CHECK_PORT'),
           BATCH_SIZE: mustGetEnv('BATCH_SIZE'),
           // Origin bucket
-          ORIGIN_BUCKET_REGION: mustGetEnv('ORIGIN_BUCKET_REGION'),
-          ORIGIN_BUCKET_NAME: mustGetEnv('ORIGIN_BUCKET_NAME'),
+          ORIGIN_BUCKET_REGION: 'us-west-2',
+          ORIGIN_BUCKET_NAME: 'dotstorage-prod-1',
           ORIGIN_BUCKET_ENDPOINT: process.env['ORIGIN_BUCKET_ENDPOINT'] || '',
           ORIGIN_BUCKET_ACCESS_KEY_ID: mustGetEnv('ORIGIN_BUCKET_ACCESS_KEY_ID'),
           ORIGIN_BUCKET_SECRET_ACCESS_KEY: mustGetEnv('ORIGIN_BUCKET_SECRET_ACCESS_KEY'),
