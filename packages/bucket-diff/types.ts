@@ -22,11 +22,19 @@ export interface BucketDiffCreateListProps extends BucketDiffProps {
 
 export interface BucketDiffUpdateListProps extends BucketDiffProps {
   destinationBucket: BucketProps
+  destinationSideIndexBucket: BucketProps
+  destinationRootIndexBucket: BucketProps
 }
 
 export interface ListResult {
   inKey: string
   outKey: string
+  size: number
+}
+
+export interface ListEntry {
+  in: string
+  out: string
   size: number
 }
 
@@ -40,6 +48,8 @@ export interface BucketCreateListClients extends BucketClients {}
 
 export interface BucketUpdateListClients extends BucketClients {
   destinationBucket: BucketClient
+  destinationSideIndexBucket: BucketClient
+  destinationRootIndexBucket: BucketClient
 }
 
 export interface BucketProps {

@@ -1,6 +1,8 @@
 // import Stream from 'stream'
 import crypto from 'crypto'
 
+import { Multibases } from 'ipfs-core-utils/multibases'
+import { bases } from 'multiformats/basics'
 import { CID } from 'multiformats/cid'
 import { toString } from 'uint8arrays/to-string'
 import { fromString } from 'uint8arrays/from-string'
@@ -30,7 +32,9 @@ async function copyAndIndexStream (buckets, item, response) {
     if (item.in.includes('raw/')) {
       rootCid = normalizeCid(item.in.split('raw/')[1].split('/')[0])
     }
-  } catch {}
+  } catch {
+    console.log('normalizecid-error', item.in)
+  }
 
   await Promise.all([
     // copy
@@ -129,7 +133,30 @@ const COPY_STATUS = {
   FAIL: 'FAIL'
 }
 
-export function normalizeCid (cid) {
-  const c = CID.parse(cid)
+/**
+ * Parse CID and return normalized b32 v1.
+ *
+ * @param {string} cid
+ */
+export async function normalizeCid (cid) {
+  const baseDecoder = await getMultibaseDecoder(cid)
+  const c = CID.parse(cid, baseDecoder)
   return c.toV1().toString()
+}
+
+/**
+ * Get multibase to decode CID
+ *
+ * @param {string} cid
+ */
+async function getMultibaseDecoder (cid) {
+  const multibaseCodecs = Object.values(bases)
+  const basicBases = new Multibases({
+    bases: multibaseCodecs
+  })
+
+  const multibasePrefix = cid[0]
+  const base = await basicBases.getBase(multibasePrefix)
+
+  return base.decoder
 }

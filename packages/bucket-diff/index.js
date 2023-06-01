@@ -6,8 +6,9 @@ import ndjson from 'ndjson'
 import { Web3Storage, getFilesFromPath } from 'web3.storage'
 
 import { createHealthCheckServer } from './health.js'
-import { getDestinationKey } from './utils.js'
-import { getCreateListBuckets, getUpdateListBuckets } from './buckets.js'
+import { getUpdateListBuckets } from './buckets.js'
+import { getList } from './create.js'
+import { fetchCar, filterAlreadyStoredOrBad } from './update.js'
 
 const log = debug(`carpark-bucket-diff`)
 
@@ -40,17 +41,10 @@ export async function startCreateList (props) {
   log('ending create list...')
 
   // Store data to web3.storage
-  const w3Client = new Web3Storage({
-    token: props.web3StorageToken
-  })
-  const files = await getFilesFromPath(`${props.originBucket.name}-${props.prefix}`)
-  const cid = await w3Client.put(files)
-
-  console.log('Content added with CID:', cid)
+  await storeList(props)
 
   log('closing HTTP server...')
-
-  clearInterval(i)
+  // clearInterval(i)
 }
 
 /**
@@ -75,8 +69,30 @@ export async function startUpdateList (props) {
   log('starting update list...')
 
   const buckets = getUpdateListBuckets(props)
-  console.log('but', buckets)
+  const badCids = await getBadCids([
+    'nft_cids_uploads_blocked_users.json',
+    'w3_cids_uploads_blocked_users.json'
+  ])
+
+  await pipe(
+    fetchCar(props.dataUrl, log),
+    filterAlreadyStoredOrBad(buckets, badCids, log, props.dataUrl),
+    logListResult(props),
+  )
+
+  log('stop update list...')
+
   // Store data to web3.storage
+  // await storeList(props)
+
+  log('closing HTTP server...')
+  // clearInterval(i)
+}
+
+/**
+ * @param {import('./types').BucketDiffProps} props
+ */
+async function storeList (props) {
   const w3Client = new Web3Storage({
     token: props.web3StorageToken
   })
@@ -84,98 +100,71 @@ export async function startUpdateList (props) {
   const cid = await w3Client.put(files)
 
   console.log('Content added with CID:', cid)
-
-  log('closing HTTP server...')
-
-  clearInterval(i)
 }
 
 /**
- * @param {import('./types').BucketDiffCreateListProps} props
- */
-async function * getList (props) {
-  const buckets = getCreateListBuckets(props)
-  let outList = []
-
-  for await (const contents of buckets.originBucket.list({
-    MaxKeys: props.readBatchSize,
-    Prefix: props.prefix,
-    ContinuationToken: props.continuationToken
-  })) {
-    const results = await Promise.all(
-      contents
-        // We can't filter by suffix within List object command
-        .filter(c => c.Key?.endsWith('.car'))
-        .map(async c => {
-          const key = await getDestinationKey(c.Key || '')
-          return {
-            inKey: c.Key,
-            outKey: key,
-            size: c.Size || 0
-          }
-        })
-    )
-
-    outList = [
-      ...outList,
-      // remove duplicates from new
-      ...(results.filter((r, index, array) => {
-        return array.findIndex(a => a.outKey === r.outKey) === index
-      }))
-    ]
-
-    if (outList.length >= props.writeBatchSize) {
-      yield outList.splice(0, props.writeBatchSize)
-    }
-  }
-
-  yield outList
-}
-
-/**
- * @param {import('./types').BucketDiffCreateListProps} props
+ * @param {import('./types').BucketDiffProps} props
  */
 function logListResult (props) {
-  let counter = 0
+  let totalCounter = 0
+  let wroteCounter = 0
 
   return async function (source) {
-    const outDir = `${props.originBucket.name}-${props.prefix}`
-    // Allow failure if exists
-    try {
-      await fsProm.mkdir(outDir)
-    } catch {}
+    const parts = props.dataUrl.split('/')
+    const outputFile = parts[parts.length - 1]
+    const transformStream = ndjson.stringify()
+    const outputStream = transformStream.pipe(createWriteStream(outputFile))
 
-    for await (const page of source) {
-      const outputFile = `${outDir}/${counter}.ndjson`
-      const transformStream = ndjson.stringify()
-      const outputStream = transformStream.pipe(createWriteStream(outputFile))
-
-      for (const result of page) {
+    for await (const result of source) {
+      if (!result.dest || !result.destIndex || !result.destRoot) {
         transformStream.write({
           in: result.inKey || '',
           out: result.outKey,
-          size: result.size || 0
+          size: result.size || 0,
+          bad: false,
+          dest: result.dest || false,
+          destIndex: result.destIndex || false,
+          destRoot: result.destRoot || false,
         })
+
+        wroteCounter++
+        console.log(wroteCounter, 'wrote')
       }
 
-      counter++
+      totalCounter++
+      console.log(totalCounter, 'processed')
+    }
 
-      console.log(counter, 'wrote', outputFile)
-      transformStream.end()
-      await new Promise((resolve) => {
-        outputStream.on('finish', () => resolve(true))
-      })
+    transformStream.end()
+    await new Promise((resolve) => {
+      outputStream.on('finish', () => resolve(true))
+    })
 
-      const w3Client = new Web3Storage({
-        token: props.web3StorageToken
-      })
-      const finalFiles = [{
-        name: outputFile,
-        stream: () => createReadStream(outputFile)
-      }]
-      const cid = await w3Client.put(finalFiles)
-      console.log('cid', cid)
-      await fsProm.rm(outputFile)
+    const w3Client = new Web3Storage({
+      token: props.web3StorageToken
+    })
+    const finalFiles = [{
+      name: outputFile,
+      stream: () => createReadStream(outputFile)
+    }]
+    const cid = await w3Client.put(finalFiles)
+    console.log('cid', cid)
+    await fsProm.rm(outputFile)
+  }
+}
+
+/**
+ * @param {string[]} files 
+ */
+async function getBadCids (files) {
+  const badCids = new Set()
+  for (const file of files) {
+    const data = JSON.parse(await fsProm.readFile(file, 'utf-8'))
+
+    for (const entry of data) {
+      entry.contentCid && entry.contentCid[0] && badCids.add(entry.contentCid[0])
     }
   }
+
+  return badCids
 }
