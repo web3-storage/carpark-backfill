@@ -6,7 +6,7 @@ COPY package*.json *.js ./
 RUN npm install
 
 COPY *.js *.json *.sh ./
-CMD [ "npm", "run", "start-update", "--silent"]
+CMD [ "npm", "run", "verify-list", "--silent"]
 
 EXPOSE 3000
 HEALTHCHECK --interval=60s --timeout=1s --start-period=5s --retries=3 CMD [ "curl" "https://127.0.0.1:3000" "--fail" ]

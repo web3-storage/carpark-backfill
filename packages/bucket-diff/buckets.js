@@ -153,7 +153,7 @@ export class BucketClient {
       }))
     
       continuationToken = response.NextContinuationToken
-      console.log(count, 'continuation token', continuationToken)
+      console.log(count, response.Contents?.length, 'continuation token', continuationToken)
 
       if (response.Contents) {
         yield response.Contents

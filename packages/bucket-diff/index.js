@@ -7,12 +7,52 @@ import { Web3Storage, getFilesFromPath } from 'web3.storage'
 
 import { createHealthCheckServer } from './health.js'
 import { getUpdateListBuckets } from './buckets.js'
-import { getList } from './create.js'
+import { getList, filterAlreadyStoredOrBadOnCreate } from './create.js'
 import { fetchCar, filterAlreadyStoredOrBad } from './update.js'
 
 const log = debug(`carpark-bucket-diff`)
 
 const REPORT_INTERVAL = 1000 * 60 // log download progress every minute
+
+/**
+ * @param {import('./types').BucketDiffVerifyListProps} props
+ */
+export async function startVerifyList (props) {
+  const sourceDataFile = props.dataUrl?.substring(props.dataUrl.lastIndexOf('/') + 1)
+
+  log('creating HTTP server...')
+  // Healh check
+  const gracePeriodMs = REPORT_INTERVAL * 2
+  const health = createHealthCheckServer({ sourceDataFile, gracePeriodMs })
+
+  health.srv.listen(props.healthcheckPort, '0.0.0.0', () => {
+    log(`healthcheck server listening on ${props.healthcheckPort}`)
+  })
+
+  const i = setInterval(() => {
+    health.heartbeat()
+  }, 2000)
+
+  const buckets = getUpdateListBuckets(props)
+  const badCids = await getBadCids([
+    'nft_cids_uploads_blocked_users.json',
+    'w3_cids_uploads_blocked_users.json'
+  ])
+
+  log('starting verify list...')
+  await pipe(
+    getList(props),
+    filterAlreadyStoredOrBadOnCreate(buckets, badCids, log),
+    logListResult(props)
+  )
+  log('ending verify list...')
+
+  // Store data to web3.storage
+  await storeList(props)
+
+  log('closing HTTP server...')
+  clearInterval(i)
+}
 
 /**
  * @param {import('./types').BucketDiffCreateListProps} props

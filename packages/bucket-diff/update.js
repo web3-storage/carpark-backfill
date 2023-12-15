@@ -85,6 +85,8 @@ export function filterAlreadyStoredOrBad (buckets, badCids, log, dataUrl) {
           rootCid && buckets.destinationRootIndexBucket.has(`${rootCid}/${item.out.split('/')[0]}`)
         ])
 
+        console.log('cool', item.out, dest, destIndex, destRoot)
+
         return {
           item,
           dest,

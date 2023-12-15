@@ -26,6 +26,8 @@ export interface BucketDiffUpdateListProps extends BucketDiffProps {
   destinationRootIndexBucket: BucketProps
 }
 
+export interface BucketDiffVerifyListProps extends BucketDiffCreateListProps, BucketDiffUpdateListProps {}
+
 export interface ListResult {
   inKey: string
   outKey: string

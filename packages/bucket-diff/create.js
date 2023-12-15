@@ -1,5 +1,9 @@
+import { pipe } from 'it-pipe'
+import { transform } from 'streaming-iterables'
+
 import { getDestinationKey } from './utils.js'
 import { getCreateListBuckets } from './buckets.js'
+import { normalizeCid } from './update.js'
 
 /**
  * @param {import('./types').BucketDiffCreateListProps} props
@@ -36,9 +40,75 @@ export async function * getList (props) {
     ]
 
     if (outList.length >= props.writeBatchSize) {
-      yield outList.splice(0, props.writeBatchSize)
+      for (const item of outList.splice(0, props.writeBatchSize)) {
+        yield item
+      }
+      // yield outList.splice(0, props.writeBatchSize)
     }
   }
 
   yield outList
+}
+
+/**
+ * @param {import('./types.js').BucketUpdateListClients} buckets
+ * @param {Set<string>} badCids
+ * @param {any} log
+ */
+export function filterAlreadyStoredOrBadOnCreate (buckets, badCids, log) {
+  return async function * (source) {
+    let totalCount = 0
+
+    yield * pipe(
+      source,
+      transform(40, async (/** @type {import('./types.js').ListResult} */ item) => {
+        totalCount++
+        log(`try ${totalCount}`)
+        console.log('item', item)
+        if (badCids.has(item.outKey.split('/')[0])) {
+          return {
+            item,
+            bad: true
+          }
+        }
+
+        let rootCid
+        try {
+          rootCid = await normalizeCid(item.inKey.replace('raw/', '').split('/')[0])
+        } catch {
+          console.log('norootcid', item.inKey)
+        }
+
+        const [dest, destRoot] = await Promise.all([
+          buckets.destinationBucket.has(item.outKey),
+          // buckets.destinationSideIndexBucket.has(`${item.outKey}.idx`),
+          rootCid && buckets.destinationRootIndexBucket.has(`${rootCid}/${item.outKey.split('/')[0]}`)
+        ])
+
+        console.log('cool', item.outKey, dest, destRoot)
+
+        return {
+          item,
+          dest,
+          destIndex: true,
+          destRoot
+        }
+      }),
+      async function * (source) {
+        for await (const entry of source) {
+          if (entry?.item != null) {
+            yield {
+              inKey: entry.item.inKey,
+              outKey: entry.item.outKey,
+              size: entry.item.size,
+              bad: false,
+              dest: entry.dest || false,
+              destIndex: entry.destIndex || false,
+              destRoot: entry.destRoot || false,
+            }
+          }
+        }
+      }
+    )
+  }
 }

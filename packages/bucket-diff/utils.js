@@ -3,6 +3,13 @@ import { fromString } from "uint8arrays/from-string"
 import { sha256 } from 'multiformats/hashes/sha2'
 import { Digest } from 'multiformats/hashes/digest'
 
+export function getVerifyListContext () {
+  return {
+    ...(getUpdateListEnvContext()),
+    ...(getCreateListEnvContext())
+  }
+}
+
 export function getUpdateListEnvContext () {
   return {
     ...(getCommonEnvContext()),
